@@ -3,7 +3,8 @@ import { Remote } from 'stagehand';
 import { connect } from 'stagehand/lib/adapters/child-process';
 import { hasPlugin, addPlugin } from 'ember-cli-babel-plugin-helpers';
 import Addon from 'ember-cli/lib/models/addon';
-import { addon } from './lib/utilities/ember-cli-entities';
+import EmberApp from 'ember-cli/lib/broccoli/ember-app';
+import Project from 'ember-cli/lib/models/project';
 import fork from './lib/utilities/fork';
 import TypecheckWorker from './lib/typechecking/worker';
 import TypecheckMiddleware from './lib/typechecking/middleware';
@@ -13,11 +14,31 @@ import fs from 'fs-extra';
 
 export const ADDON_NAME = 'ember-cli-typescript';
 
-export default addon({
-  name: ADDON_NAME,
+export default class EmberCLITypeScriptAddon extends Addon {
+  /**
+   * Since `CoreObject` executes the `init` chain _during_ `super()`, the
+   * `Addon` base class's `init` runs _before_ class instance property
+   * assignments in the `EmberCLITypeScriptAddon` sub-class.
+   *
+   * Since `Addon#init` checks for the presence of `this.name`, we need to
+   * assign the property here as opposed to just using a class instance property
+   * assignment, like:
+   *
+   * ```ts
+   * class EmberCLITypeScriptAddon extends Addon {
+   *   name = ADDON_NAME;
+   * }
+   * ```
+   *
+   * @see https://github.com/ember-cli/ember-cli/blob/3af9f60cfe6e16caab0a972c7d25e8bb8017db26/lib/models/addon.js#L286-L288
+   */
+  init(...args: any[]) {
+    this.name = ADDON_NAME;
+    super.init(...args);
+  }
 
-  included() {
-    this._super.included.apply(this, arguments);
+  included(includer: EmberApp | Project) {
+    super.included(includer);
     this._checkDevelopment();
     this._checkAddonAppFiles();
     this._checkBabelVersion();
@@ -29,7 +50,7 @@ export default addon({
       this._checkInstallationLocation();
       this._checkEmberCLIVersion();
     }
-  },
+  }
 
   includedCommands() {
     if (this.project.isEmberCLIAddon()) {
@@ -38,19 +59,19 @@ export default addon({
         'ts:clean': require('./lib/commands/clean').default,
       };
     }
-  },
+  }
 
   blueprintsPath() {
     return `${__dirname}/blueprints`;
-  },
+  }
 
-  serverMiddleware({ app }) {
+  serverMiddleware({ app }: { app: Application }) {
     this._addTypecheckMiddleware(app);
-  },
+  }
 
-  testemMiddleware(app) {
+  testemMiddleware(app: Application) {
     this._addTypecheckMiddleware(app);
-  },
+  }
 
   async postBuild() {
     // This code makes the fundamental assumption that the TS compiler's fs watcher
@@ -67,9 +88,9 @@ export default addon({
       // with nice highlighting and formatting separately.
       throw new Error('Typechecking failed');
     }
-  },
+  }
 
-  setupPreprocessorRegistry(type) {
+  setupPreprocessorRegistry(type: 'self' | 'parent') {
     if (type !== 'parent') return;
 
     // Normally this is the sort of logic that would live in `included()`, but
@@ -86,15 +107,15 @@ export default addon({
         after: ['@babel/plugin-proposal-class-properties'],
       });
     }
-  },
+  }
 
-  shouldIncludeChildAddon(addon) {
+  shouldIncludeChildAddon(addon: Addon) {
     // For testing, we have dummy in-repo addons set up, but e-c-ts doesn't depend on them;
     // its dummy app does. Otherwise we'd have a circular dependency.
     return !['in-repo-a', 'in-repo-b'].includes(addon.name);
-  },
+  }
 
-  _checkBabelVersion() {
+  private _checkBabelVersion() {
     let babel = this.parent.addons.find(addon => addon.name === 'ember-cli-babel');
     let version = babel && babel.pkg.version;
     if (!babel || !(semver.gte(version!, '7.7.3') && semver.lt(version!, '8.0.0'))) {
@@ -104,9 +125,9 @@ export default addon({
           'your TypeScript files may not be transpiled correctly.'
       );
     }
-  },
+  }
 
-  _checkEmberCLIVersion() {
+  private _checkEmberCLIVersion() {
     let cliPackage = this.project.require('ember-cli/package.json') as {
       version: string;
     };
@@ -117,18 +138,18 @@ export default addon({
           'compiler needs to keep track of.'
       );
     }
-  },
+  }
 
-  _checkDevelopment() {
+  private _checkDevelopment() {
     if (this.isDevelopingAddon() && !process.env.CI && __filename.endsWith('.js')) {
       this.ui.writeWarnLine(
         'ember-cli-typescript is in development but not being loaded from `.ts` sources — ' +
           'do you have compiled artifacts lingering in `/js`?'
       );
     }
-  },
+  }
 
-  _checkAddonAppFiles() {
+  private _checkAddonAppFiles() {
     // Emit a warning for addons that are under active development...
     let isDevelopingAddon = !this.app && (this.parent as Addon).isDevelopingAddon();
 
@@ -147,9 +168,9 @@ export default addon({
         );
       }
     }
-  },
+  }
 
-  _checkInstallationLocation() {
+  private _checkInstallationLocation() {
     if (
       this.project.isEmberCLIAddon() &&
       this.project.pkg.devDependencies &&
@@ -159,14 +180,14 @@ export default addon({
         '`ember-cli-typescript` should be included in your `dependencies`, not `devDependencies`'
       );
     }
-  },
+  }
 
-  _getConfigurationTarget() {
+  private _getConfigurationTarget() {
     // If `this.app` isn't present, we know `this.parent` is an addon
     return this.app || (this.parent as Addon);
-  },
+  }
 
-  _registerBabelExtension() {
+  private _registerBabelExtension() {
     let target = this._getConfigurationTarget();
     let options: Record<string, any> = target.options || (target.options = {});
     let babelAddonOptions: Record<string, any> =
@@ -177,25 +198,25 @@ export default addon({
     if (!extensions.includes('ts')) {
       extensions.push('ts');
     }
-  },
+  }
 
-  _addTypecheckMiddleware(app: Application) {
+  private _addTypecheckMiddleware(app: Application) {
     let workerPromise = this._getTypecheckWorker();
     let middleware = new TypecheckMiddleware(this.project, workerPromise);
     middleware.register(app);
-  },
+  }
 
-  _typecheckWorker: undefined as Promise<Remote<TypecheckWorker>> | undefined,
+  private _typecheckWorker?: Promise<Remote<TypecheckWorker>>;
 
-  _getTypecheckWorker() {
+  private _getTypecheckWorker() {
     if (!this._typecheckWorker) {
       this._typecheckWorker = this._forkTypecheckWorker();
     }
 
     return this._typecheckWorker;
-  },
+  }
 
-  async _forkTypecheckWorker() {
+  private async _forkTypecheckWorker() {
     let childProcess = fork(`${__dirname}/lib/typechecking/worker/launch`);
     let worker = await connect<TypecheckWorker>(childProcess);
 
@@ -208,5 +229,5 @@ export default addon({
     await worker.start(this.project.root);
 
     return worker;
-  },
-});
+  }
+}

@@ -2,18 +2,17 @@ import os from 'os';
 import execa from 'execa';
 import fs from 'fs-extra';
 import path from 'path';
-import { command } from '../utilities/ember-cli-entities';
+import Command from 'ember-cli/lib/models/command';
 import copyDeclarations from '../utilities/copy-declarations';
 
 export const PRECOMPILE_MANIFEST = 'dist/.ts-precompile-manifest';
 
-export default command({
-  name: 'ts:precompile',
-  works: 'insideProject',
-  description:
-    'Generates JS and declaration files from TypeScript sources in preparation for publishing.',
+export default class PrecompileCommand extends Command {
+  works = 'insideProject' as const;
+  description =
+    'Generates JS and declaration files from TypeScript sources in preparation for publishing.';
 
-  availableOptions: [{ name: 'manifest-path', type: String, default: PRECOMPILE_MANIFEST }],
+  availableOptions = [{ name: 'manifest-path', type: String, default: PRECOMPILE_MANIFEST }];
 
   async run(options: { manifestPath: string }) {
     let outDir = `${os.tmpdir()}/e-c-ts-precompile-${process.pid}`;
@@ -54,9 +53,9 @@ export default command({
     fs.mkdirsSync(path.dirname(manifestPath));
     fs.writeFileSync(manifestPath, JSON.stringify(createdFiles.reverse()));
     fs.remove(outDir);
-  },
+  }
 
-  _loadConfig(outDir: string) {
+  private _loadConfig(outDir: string) {
     let ts = this.project.require('typescript') as typeof import('typescript');
     let configPath = ts.findConfigFile(this.project.root, ts.sys.fileExists);
     if (!configPath) {
@@ -83,5 +82,8 @@ export default command({
     ];
 
     return { rootDir, paths, pathRoots };
-  },
-});
+  }
+}
+
+// https://github.com/ember-cli/ember-cli/blob/cf55d3c36118e6a04ace1cf183951f310cfca9cd/lib/cli/lookup-command.js#L18
+PrecompileCommand.prototype.name = 'ts:precompile';
