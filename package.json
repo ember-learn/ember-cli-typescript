@@ -64,7 +64,7 @@
     "@types/ember": "3.16.2",
     "@types/ember-qunit": "3.4.13",
     "@types/esprima": "4.0.2",
-    "@types/express": "4.17.7",
+    "@types/express": "4.17.9",
     "@types/fs-extra": "9.0.4",
     "@types/got": "9.6.11",
     "@types/mocha": "8.0.4",
