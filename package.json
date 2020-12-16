@@ -131,7 +131,7 @@
   "resolutions": {
     "@types/ember": "3.16.2",
     "@types/ember__string": "3.16.1",
-    "hawk": "7"
+    "hawk": "8"
   },
   "engines": {
     "node": "10.* || >= 12.*"
