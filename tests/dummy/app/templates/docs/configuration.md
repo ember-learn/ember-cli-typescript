@@ -54,5 +54,17 @@ const app = new EmberApp(defaults, {
 
 (Note that this _will_ noticeably slow down your app rebuilds.)
 
+If you are using [Embroider](https://github.com/embroider-build/embroider), you might need to inlcude [devtool](https://webpack.js.org/configuration/devtool/) in your webpack configuration:
+
+```ts
+return require('@embroider/compat').compatBuild(app, Webpack, {
+  packagerOptions: {
+    webpackConfig: { 
+      devtool: 'source-map'
+    }
+  }
+}
+```
+
 If you're updating from an older version of the addon, you may also need to update your `tsconfig.json`. (Current versions generate the correct config at installation.) Either run `ember generate ember-cli-typescript` or verify you have the same sourcemap settings in your `tscsonfig.json` that appear in [the blueprint](https://github.com/typed-ember/ember-cli-typescript/blob/master/blueprints/ember-cli-typescript/files/tsconfig.json).
 
