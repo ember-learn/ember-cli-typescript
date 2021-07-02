@@ -15,7 +15,7 @@ export default command({
 
   async run(options: { manifestPath: string }) {
     let outDir = `${process.cwd()}/e-c-ts-precompile-${process.pid}`;
-    let { paths, rootDir, pathRoots } = this._loadConfig(outDir);
+    let { paths, pathRoots } = this._loadConfig(outDir);
     if (!paths) {
       this.ui.writeLine(
         'No `paths` were found in your `tsconfig.json`, so `ts:precompile` is a no-op.'
@@ -28,7 +28,6 @@ export default command({
       await execa('tsc', [
         '--allowJs', 'false',
         '--noEmit', 'false',
-        '--rootDir', rootDir || this.project.root,
         '--isolatedModules', 'false',
         '--declaration',
         '--declarationDir', outDir,
